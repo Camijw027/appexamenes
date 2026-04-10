@@ -9,7 +9,7 @@ services:
     ports:
       - "3309:3306"
     volumes:
-      -mysql_data:/var/lib/mysql  
+      - mysql_data:/var/lib/mysql
       - ./sql/basedatos.sql:/docker-entrypoint-initdb.d/init.sql
 
   phpmyadmin:
@@ -30,6 +30,6 @@ services:
       - ./app:/var/www/html
     command: >
       bash -c "docker-php-ext-install mysqli && apache2-foreground"
- 
+
 volumes:
   mysql_data:

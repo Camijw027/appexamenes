@@ -5,17 +5,17 @@ $sql = "SELECT * FROM examenes";
 $resultado = $conexion->query($sql);
 ?>
 
-<h1>Lista de Exámenes</h1>
+<h1>Lista de Examenes</h1>
 
 <a href="crear.php">Crear Nuevo Examen</a><br><br>
 
 <table border="1">
     <tr>
         <th>ID</th>
-        <th>Título</th>
+        <th>Titulo</th>
         <th>Materia</th>
-        <th>Fecha de Creación</th>
-        <th>ver</th>
+        <th>Fecha de Creacion</th>
+        <th>Ver</th>
     </tr>
     <?php
     if ($resultado->num_rows > 0) {
@@ -29,6 +29,7 @@ $resultado = $conexion->query($sql);
             echo "</tr>";
         }
     } else {
-        echo "<tr><td colspan='5'>No hay exámenes disponibles.</td></tr>";
+        echo "<tr><td colspan='5'>No hay examenes disponibles.</td></tr>";
     }
     ?>
+</table>
