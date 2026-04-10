@@ -1,0 +1,35 @@
+services:
+  mysql:
+    image: mysql:8
+    environment:
+      MYSQL_ROOT_PASSWORD: 1234
+      MYSQL_USER: cristian
+      MYSQL_PASSWORD: 1234
+      MYSQL_DATABASE: base_datos
+    ports:
+      - "3309:3306"
+    volumes:
+      -mysql_data:/var/lib/mysql  
+      - ./sql/basedatos.sql:/docker-entrypoint-initdb.d/init.sql
+
+  phpmyadmin:
+    image: phpmyadmin
+    ports:
+      - "8081:80"
+    environment:
+      PMA_HOST: mysql
+      PMA_PORT: 3306
+    depends_on:
+      - mysql
+
+  web:
+    image: php:8.2-apache
+    ports:
+      - "8000:80"
+    volumes:
+      - ./app:/var/www/html
+    command: >
+      bash -c "docker-php-ext-install mysqli && apache2-foreground"
+ 
+volumes:
+  mysql_data:
