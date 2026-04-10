@@ -10,7 +10,7 @@ services:
       - "3309:3306"
     volumes:
       - mysql_data:/var/lib/mysql
-      - ./sql/basedatos.sql:/docker-entrypoint-initdb.d/init.sql
+      - ./sql:/docker-entrypoint-initdb.d
 
   phpmyadmin:
     image: phpmyadmin
