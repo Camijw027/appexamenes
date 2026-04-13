@@ -1,3 +1,7 @@
+<?php
+include 'conexion.php';
+?>
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -6,26 +10,14 @@
     <title>App Examenes</title>
 </head>
 <body>
-    <header>
-        <h1>App Examenes</h1>
-    </header>
-    <main>
-        <p>Bienvenido a la aplicacion de examenes.</p>
-        <p>Desde aqui puedes administrar alumnos y examenes.</p>
+    <h1>App Examenes</h1>
+    <p>Selecciona como deseas ingresar al sistema.</p>
 
-        <ul>
-            <li><a href="alumnos/listar.php">Gestionar alumnos</a></li>
-            <li><a href="examenes/listar.php">Gestionar examenes</a></li>
-        </ul>
+    <ul>
+        <li><a href="alumno/login.php">Ingresar como alumno</a></li>
+        <li><a href="profesor/panel.php">Ingresar como profesor</a></li>
+    </ul>
 
-        <?php
-        include 'conexion.php';
-        echo "<p>Conexion exitosa a la base de datos.</p>";
-        ?>
-    </main>
-
-    <footer>
-        <p>&copy; 2026 App Examenes. Todos los derechos reservados.</p>
-    </footer>
+    <p>Conexion activa con la base de datos.</p>
 </body>
 </html>
