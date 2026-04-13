@@ -1,30 +1,51 @@
 <?php
-include('../conexion.php');
+session_start();
+include '../conexion.php';
+include '../helpers.php';
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['examen_id'])) {
-    echo "Solicitud invalida.";
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' || !isset($_POST['asignacion_id']) || !isset($_SESSION['alumno_id'])) {
+    echo 'Solicitud invalida.';
     exit;
 }
 
-$examen_id = (int) $_POST['examen_id'];
+$asignacion_id = (int) $_POST['asignacion_id'];
+$alumno_id = (int) $_SESSION['alumno_id'];
 
-$sql_examen = "SELECT * FROM examenes WHERE id = $examen_id";
-$resultado_examen = $conexion->query($sql_examen);
+// Verifica que la asignacion exista y corresponda al alumno autenticado.
+$stmtAsignacion = $conexion->prepare(
+    "SELECT a.id, a.estado, e.id AS examen_id, e.titulo, e.materia
+     FROM asignaciones a
+     INNER JOIN examenes e ON e.id = a.examen_id
+     WHERE a.id = ? AND a.alumno_id = ?"
+);
+$stmtAsignacion->bind_param("ii", $asignacion_id, $alumno_id);
+$stmtAsignacion->execute();
+$resultado_asignacion = $stmtAsignacion->get_result();
+$asignacion = $resultado_asignacion->fetch_assoc();
+$stmtAsignacion->close();
 
-if (!$resultado_examen || $resultado_examen->num_rows === 0) {
-    echo "Examen no encontrado.";
+if (!$asignacion) {
+    echo 'Asignacion no encontrada.';
     exit;
 }
 
-$examen = $resultado_examen->fetch_assoc();
-$sql_preguntas = "SELECT * FROM preguntas WHERE examen_id = $examen_id";
-$resultado_preguntas = $conexion->query($sql_preguntas);
+if ($asignacion['estado'] !== 'pendiente') {
+    echo 'Este examen ya fue enviado.';
+    exit;
+}
+
+$examen_id = (int) $asignacion['examen_id'];
+$stmtPreguntas = $conexion->prepare("SELECT * FROM preguntas WHERE examen_id = ? ORDER BY id ASC");
+$stmtPreguntas->bind_param("i", $examen_id);
+$stmtPreguntas->execute();
+$resultadoPreguntas = $stmtPreguntas->get_result();
 
 $total = 0;
 $correctas = 0;
 $detalle = [];
 
-while ($pregunta = $resultado_preguntas->fetch_assoc()) {
+// Recorre cada pregunta para contar respuestas correctas y guardar un detalle visible.
+while ($pregunta = $resultadoPreguntas->fetch_assoc()) {
     $total++;
     $respuesta_usuario = $_POST['respuesta_' . $pregunta['id']] ?? null;
     $es_correcta = $respuesta_usuario === $pregunta['respuesta_correcta'];
@@ -40,8 +61,35 @@ while ($pregunta = $resultado_preguntas->fetch_assoc()) {
         'es_correcta' => $es_correcta,
     ];
 }
+$stmtPreguntas->close();
 
-$porcentaje = $total > 0 ? round(($correctas / $total) * 100, 2) : 0;
+list($calificacion, $descripcion) = obtenerEscala($correctas);
+
+// Guarda el resultado final y marca la asignacion como presentada en una sola transaccion.
+$conexion->begin_transaction();
+
+try {
+    $fecha_presentacion = date('Y-m-d H:i:s');
+
+    $stmtResultado = $conexion->prepare(
+        "INSERT INTO resultados (asignacion_id, respuestas_correctas, calificacion, descripcion, fecha_presentacion)
+         VALUES (?, ?, ?, ?, ?)"
+    );
+    $stmtResultado->bind_param("iiiss", $asignacion_id, $correctas, $calificacion, $descripcion, $fecha_presentacion);
+    $stmtResultado->execute();
+    $stmtResultado->close();
+
+    $stmtActualizarAsignacion = $conexion->prepare("UPDATE asignaciones SET estado = 'presentado' WHERE id = ?");
+    $stmtActualizarAsignacion->bind_param("i", $asignacion_id);
+    $stmtActualizarAsignacion->execute();
+    $stmtActualizarAsignacion->close();
+
+    $conexion->commit();
+} catch (Throwable $e) {
+    $conexion->rollback();
+    echo 'No fue posible guardar el resultado.';
+    exit;
+}
 ?>
 
 <!DOCTYPE html>
@@ -53,27 +101,23 @@ $porcentaje = $total > 0 ? round(($correctas / $total) * 100, 2) : 0;
 </head>
 <body>
     <h1>Resultado del examen</h1>
-    <p><strong>Titulo:</strong> <?php echo htmlspecialchars($examen['titulo']); ?></p>
-    <p><strong>Materia:</strong> <?php echo htmlspecialchars($examen['materia']); ?></p>
+    <p><strong>Titulo:</strong> <?php echo escaparHtml($asignacion['titulo']); ?></p>
+    <p><strong>Materia:</strong> <?php echo escaparHtml($asignacion['materia']); ?></p>
     <p><strong>Respuestas correctas:</strong> <?php echo $correctas; ?> de <?php echo $total; ?></p>
-    <p><strong>Porcentaje:</strong> <?php echo $porcentaje; ?>%</p>
+    <p><strong>Calificacion:</strong> <?php echo $calificacion; ?></p>
+    <p><strong>Descripcion:</strong> <?php echo escaparHtml($descripcion); ?></p>
 
     <h2>Detalle</h2>
 
-    <?php if ($total === 0) { ?>
-        <p>Este examen no tiene preguntas registradas.</p>
-    <?php } else { ?>
-        <?php foreach ($detalle as $item) { ?>
-            <div style="border: 1px solid #ccc; padding: 10px; margin-bottom: 10px;">
-                <p><strong>Pregunta:</strong> <?php echo htmlspecialchars($item['pregunta']); ?></p>
-                <p><strong>Tu respuesta:</strong> <?php echo htmlspecialchars($item['respuesta_usuario'] ?? 'Sin responder'); ?></p>
-                <p><strong>Respuesta correcta:</strong> <?php echo htmlspecialchars($item['respuesta_correcta']); ?></p>
-                <p><strong>Estado:</strong> <?php echo $item['es_correcta'] ? 'Correcta' : 'Incorrecta'; ?></p>
-            </div>
-        <?php } ?>
+    <?php foreach ($detalle as $item) { ?>
+        <div style="border: 1px solid #ccc; padding: 10px; margin-bottom: 10px;">
+            <p><strong>Pregunta:</strong> <?php echo escaparHtml($item['pregunta']); ?></p>
+            <p><strong>Tu respuesta:</strong> <?php echo escaparHtml($item['respuesta_usuario'] ?? 'Sin responder'); ?></p>
+            <p><strong>Respuesta correcta:</strong> <?php echo escaparHtml($item['respuesta_correcta']); ?></p>
+            <p><strong>Estado:</strong> <?php echo $item['es_correcta'] ? 'Correcta' : 'Incorrecta'; ?></p>
+        </div>
     <?php } ?>
 
-    <p><a href="ver.php?id=<?php echo $examen_id; ?>">Volver al examen</a></p>
-    <p><a href="listar.php">Volver al listado</a></p>
+    <p><a href="../alumno/panel.php">Volver al panel del alumno</a></p>
 </body>
 </html>

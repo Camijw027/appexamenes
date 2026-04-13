@@ -1,5 +1,6 @@
 CREATE DATABASE IF NOT EXISTS base_datos;
 USE base_datos;
+
 CREATE TABLE alumnos (
     id INT PRIMARY KEY AUTO_INCREMENT,
     cedula VARCHAR(20) NOT NULL UNIQUE,
@@ -26,4 +27,25 @@ CREATE TABLE preguntas (
     opcion_c VARCHAR(100) NOT NULL,
     respuesta_correcta VARCHAR(1) NOT NULL,
     FOREIGN KEY (examen_id) REFERENCES examenes(id) ON DELETE CASCADE
+);
+
+CREATE TABLE asignaciones (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    alumno_id INT NOT NULL,
+    examen_id INT NOT NULL,
+    fecha_asignacion DATE NOT NULL,
+    estado VARCHAR(20) NOT NULL DEFAULT 'pendiente',
+    UNIQUE KEY unica_asignacion (alumno_id, examen_id),
+    FOREIGN KEY (alumno_id) REFERENCES alumnos(id) ON DELETE CASCADE,
+    FOREIGN KEY (examen_id) REFERENCES examenes(id) ON DELETE CASCADE
+);
+
+CREATE TABLE resultados (
+    id INT PRIMARY KEY AUTO_INCREMENT,
+    asignacion_id INT NOT NULL UNIQUE,
+    respuestas_correctas INT NOT NULL,
+    calificacion INT NOT NULL,
+    descripcion VARCHAR(20) NOT NULL,
+    fecha_presentacion DATETIME NOT NULL,
+    FOREIGN KEY (asignacion_id) REFERENCES asignaciones(id) ON DELETE CASCADE
 );
