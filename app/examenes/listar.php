@@ -1,35 +1,50 @@
 <?php
-include ('../conexion.php');
+include '../conexion.php';
+include '../helpers.php';
 
-$sql = "SELECT * FROM examenes";
+$sql = "SELECT * FROM examenes ORDER BY id ASC";
 $resultado = $conexion->query($sql);
 ?>
 
-<h1>Lista de Examenes</h1>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Lista de examenes</title>
+</head>
+<body>
+    <h1>Lista de examenes</h1>
 
-<a href="crear.php">Crear Nuevo Examen</a><br><br>
+    <p>
+        <a href="crear.php">Crear nuevo examen</a> |
+        <a href="resultados.php">Ver resultados de examenes</a> |
+        <a href="../profesor/panel.php">Volver al panel del profesor</a>
+    </p>
 
-<table border="1">
-    <tr>
-        <th>ID</th>
-        <th>Titulo</th>
-        <th>Materia</th>
-        <th>Fecha de Creacion</th>
-        <th>Ver</th>
-    </tr>
-    <?php
-    if ($resultado->num_rows > 0) {
-        while($fila = $resultado->fetch_assoc()) {
-            echo "<tr>";
-            echo "<td>" . $fila['id'] . "</td>";
-            echo "<td>" . $fila['titulo'] . "</td>";
-            echo "<td>" . $fila['materia'] . "</td>";
-            echo "<td>" . $fila['fecha_creacion'] . "</td>";
-            echo "<td><a href='ver.php?id=" . $fila['id'] . "'>Ver Detalles</a></td>";
-            echo "</tr>";
-        }
-    } else {
-        echo "<tr><td colspan='5'>No hay examenes disponibles.</td></tr>";
-    }
-    ?>
-</table>
+    <table border="1" cellpadding="8">
+        <tr>
+            <th>ID</th>
+            <th>Titulo</th>
+            <th>Materia</th>
+            <th>Fecha de creacion</th>
+            <th>Accion</th>
+        </tr>
+        <?php if ($resultado->num_rows > 0) { ?>
+            <?php while ($fila = $resultado->fetch_assoc()) { ?>
+                <tr>
+                    <td><?php echo (int) $fila['id']; ?></td>
+                    <td><?php echo escaparHtml($fila['titulo']); ?></td>
+                    <td><?php echo escaparHtml($fila['materia']); ?></td>
+                    <td><?php echo escaparHtml($fila['fecha_creacion']); ?></td>
+                    <td><a href="ver.php?id=<?php echo (int) $fila['id']; ?>">Ver detalles</a></td>
+                </tr>
+            <?php } ?>
+        <?php } else { ?>
+            <tr>
+                <td colspan="5">No hay examenes disponibles.</td>
+            </tr>
+        <?php } ?>
+    </table>
+</body>
+</html>
